@@ -552,7 +552,7 @@ def main():
     # Determine command line arguments
     try:
         opts, _ = getopt.getopt(sys.argv[1:], "e:a:c:t:m:o:k:p:")
-    except getopt.GetoptError, err:
+    except getopt.GetoptError as err:
         print(err)
         usage()
         sys.exit(2)
