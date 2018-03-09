@@ -66,7 +66,7 @@ def bindings(cases, rules):
             
             rule_success = True
             
-            for attr, value in rule.iteritems():
+            for attr, value in rule.items():
                 if attr in case:
                     
                     attr_success = False
@@ -125,7 +125,7 @@ def classify(classes):
             # This case was satisfied by one of the non-default classes.
             found = False
             
-            for m, ruleset in model.iteritems():
+            for m, ruleset in model.items():
                 
                 # No need to continue of we found a rule that satisfies the case.
                 if found:
@@ -148,7 +148,7 @@ def classify(classes):
     
     # Output our results to the result file.
     output = "Class\t\t\tCases\t\t\tClassified\n\n"
-    for attr, result in results.iteritems():
+    for attr, result in results.items():
         total += result[0]
         classified += result[1]
         output += attr + "\t\t\t" + str(result[0]) + "\t\t\t" + str(result[1]) + "\n"
@@ -234,7 +234,7 @@ def create_classes(f):
     
     # Build a reverse lookup dictionary for attribute index values.
     indices = {}
-    for attr, value in meta['attrs'].iteritems():
+    for attr, value in meta['attrs'].items():
         indices[value[0]] = attr
     
     for line in f:
@@ -374,10 +374,10 @@ def grow_rule(pos, neg, rule=None, rules=None):
         rules = []
         
     while True:
-        max_gain = None
+        max_gain = float('-inf')
         max_condition = None
         
-        for attr, values in meta['attrs'].iteritems():
+        for attr, values in meta['attrs'].items():
             
             # Can't add an attribute twice.
             if attr in rule:
@@ -485,7 +485,7 @@ def learn(classes):
     # Sort our classes in order of least prevalence.  Because python works
     #  with lists backwards, it is going to run in reverse
     items = classes.items()
-    items.sort(key=lambda i: len(i[1]), reverse=True)
+    items = sorted(items, key=lambda i: len(i[1]), reverse=True)
     
     # Get all the classes.
     attrs = classes.keys()
@@ -528,7 +528,7 @@ def learn(classes):
         str_ruleset = ""
         for rule in ruleset:
             str_rule = ""
-            for attr, value in rule.iteritems():
+            for attr, value in rule.items():
                 str_rule += str(attr) + " " + str(value[0]) + " " + str(value[1]) + " && "
             str_ruleset += str_rule[:-4] + " || "
         
@@ -599,14 +599,14 @@ def main():
     for attr in meta['attrs'].keys():
         # Only look at discrete attributes.
         if not meta['attrs'][attr][1]:
-            for value in meta['attrs'][attr][2].keys():
+            for value in list(meta['attrs'][attr][2]):
                 if meta['attrs'][attr][2][value] == 0:
                     del meta['attrs'][attr][2][value]
     
     if meta['opts']['e'] == 'learn':
         # Determine the total possible attribute combinations.
         #  a.k.a the "n" of MDL.
-        for attr, values in meta['attrs'].iteritems():
+        for attr, values in meta['attrs'].items():
             # Continuous.
             if values[1]:
                 meta['n'] += 2 * len(values[2].keys())
@@ -742,8 +742,8 @@ def usage():
           "-a: the attribute file location.\n" + 
           "-c: the defining attribute in the attribute file (a.k.a what we are trying to predict).\n" + 
           "-t: the training/testing file location.\n" + 
-          "-m: the model file (machine readable results).\n" + 
-          "-o: the output file (human readable results).\n" + 
+          "-m: the model file (machine readable results).\n" +
+          "-o: the output file (human readable results).\n" +
           "\n" + 
           "The following are arguments are optional\n" + 
           "-k: the number of optimizations (default is 2)\n" +
