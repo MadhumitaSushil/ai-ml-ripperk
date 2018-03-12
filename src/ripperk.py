@@ -167,7 +167,7 @@ def create_attrs(f):
     
     Each key in the dictionary (attribute) contains a tuple 
     that has the attribute's index in the file (line number), 
-    wheter the attribute is continuous or discrete (True|False), 
+    whether the attribute is continuous or discrete (True|False),
     and a dictionary of possible values (each value records 
     the number of times that value was seen.  All are initialized 
     to zero).
