@@ -201,7 +201,7 @@ def create_attrs(f):
     
     return attrs
 
-def create_classes(f):
+def create_classes(f, class_attr):
     """
     Creates the classes dictionary.
     
@@ -228,6 +228,7 @@ def create_classes(f):
     
     Key arguments:
     f  -- the file handle.
+    class_attr -- defining attribute
     """
     # Classes dictionary.
     classes = {}
@@ -246,7 +247,7 @@ def create_classes(f):
             # Find the attr name.
             attr = indices[i]
             # Check if this is the defining attribute, skip if so.
-            if attr != meta['opts']['c']:
+            if attr != class_attr:
                 # Check for continuous.
                 if meta['attrs'][attr][1]:
                     # This is a dangerous cast!!  But we made sure it was a numeric 
@@ -272,7 +273,7 @@ def create_classes(f):
                 meta['attrs'][attr][2][value] += 1
             
             i += 1
-        
+
         # Create a new class if necessary.
         if not c in classes:
             classes[c] = []
@@ -547,6 +548,59 @@ def learn(classes):
     f.write(str(output))
     f.close()
 
+def learn_rules(exec_method, fpath_attr, class_attr, fpath_data, fpath_model, f_out, n_opt = 2, prune = 1):
+    '''
+    Method to learn rules from the given options as parameters. Performs the same functionality as the main() function, but does not accept command line arguments
+    :param exec_method: (learn/classify) to set learning or classification mode
+    :param fpath_attr: file path and name for the attribute file
+    :param class_attr: file path and name for the class file
+    :param fpath_data: file path and name for training or test data file
+    :param fpath_model: file path and name for machine readable model file
+    :param f_out: file path and name for human readable model file
+    :param n_opt: number of optimization steps to perform
+    :param prune: 1 to prune the learned rules
+    '''
+    if exec_method not in ['learn', 'classify']:
+        print("Please enter one of these execution modees: (learn|classify)")
+        sys.exit(2)
+
+    _set_reqd_opts(fpath_model, f_out, n_opt, prune)
+
+    #create attrs
+    with open(fpath_attr) as f:
+        meta['attrs'] = create_attrs(f)
+
+    #create classes
+    with open(fpath_data) as f:
+        classes = create_classes(f, class_attr)
+
+    #deleting class attribute from attribute file
+    del meta['attrs'][class_attr]
+
+    # Remove attributes that we have never seen in our training set.
+    _del_unseen_attr()
+
+    if exec_method == 'learn':
+        _get_n_attr_comb()
+        learn(classes)
+    else:
+        classify(classes)
+
+def _set_reqd_opts(fpath_model, f_out, n_opt, prune):
+    '''
+    Set required global options in code which are input as params
+    :param fpath_model:
+    :param f_out:
+    :param n_opt:
+    :param prune:
+    :return:
+    '''
+    meta['opts']['m'] = fpath_model
+    meta['opts']['o'] = f_out
+    meta['opts']['k'] = n_opt
+    meta['opts']['p'] = prune
+
+
 def main():
     """Main execution method."""
     # Determine command line arguments
@@ -583,40 +637,47 @@ def main():
         meta['opts']['p'] = True
     
     # Create attrs.
-    f = open(meta['opts']['a'])
-    meta['attrs'] = create_attrs(f)
-    f.close()
-    
+    with open(meta['opts']['a']) as f:
+        meta['attrs'] = create_attrs(f)
+
     # Create classes.
-    f = open(meta['opts']['t'])
-    classes = create_classes(f)
-    f.close()
-    
+    with open(meta['opts']['t']) as f:
+        classes = create_classes(f, meta['opts']['c'])
+
     # No need to keep track of our predict attr at this point.
     del meta['attrs'][meta['opts']['c']]
-    
+
     # Remove attributes that we have never seen in our training set.
+    _del_unseen_attr()
+
+    if meta['opts']['e'] == 'learn':
+        _get_n_attr_comb()
+        learn(classes)
+    else:
+        classify(classes)
+
+def _get_n_attr_comb():
+    # Determine the total possible attribute combinations.
+    #  a.k.a the "n" of MDL.
+    for attr, values in meta['attrs'].items():
+        # Continuous.
+        if values[1]:
+            meta['n'] += 2 * len(values[2].keys())
+        # Discrete.
+        else:
+            meta['n'] += 1
+
+def _del_unseen_attr():
+    '''
+    Remove attributes that have never been seen in our training set.
+    '''
     for attr in meta['attrs'].keys():
         # Only look at discrete attributes.
         if not meta['attrs'][attr][1]:
             for value in list(meta['attrs'][attr][2]):
                 if meta['attrs'][attr][2][value] == 0:
                     del meta['attrs'][attr][2][value]
-    
-    if meta['opts']['e'] == 'learn':
-        # Determine the total possible attribute combinations.
-        #  a.k.a the "n" of MDL.
-        for attr, values in meta['attrs'].items():
-            # Continuous.
-            if values[1]:
-                meta['n'] += 2 * len(values[2].keys())
-            # Discrete.
-            else:
-                meta['n'] += 1
-        
-        learn(classes)
-    else:
-        classify(classes)
+
 
 def optimize(pos, neg, ruleset):
     """
