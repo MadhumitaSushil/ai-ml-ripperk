@@ -171,6 +171,9 @@ def create_attrs(f):
     and a dictionary of possible values (each value records 
     the number of times that value was seen.  All are initialized 
     to zero).
+
+    @madhumita: If the features are continuous, it adds the data type
+    instead of "False" in the attribute tuple.
     
     e.g.:
     
@@ -180,25 +183,25 @@ def create_attrs(f):
     f -- the attribute file handle.
     """
     attrs = {}
-    
-    i = 0
-    for line in f:
+
+    for i, line in enumerate(f):
         # The first item is the attribute name, the rest are possible values.
-        split = line[:-1].split(" ")
+        # split = line[:-1].split(" ")
+        split = line.strip().split(" ")
         attr = split[0]
         values = split[1:]
         # Continuous case.
         if len(values) == 1 and values[0].lower() in ['int', 'float', 'long', 'complex']:
             attrs[attr] = (i, values[0].lower(), {})
+
         # Discrete case.
         else:
             v = {}
             for value in values:
                 v[value] = 0
             attrs[attr] = (i, False, v)
-        
-        i += 1
-    
+
+
     return attrs
 
 def create_classes(f, class_attr):
@@ -232,55 +235,48 @@ def create_classes(f, class_attr):
     """
     # Classes dictionary.
     classes = {}
-    
+
     # Build a reverse lookup dictionary for attribute index values.
     indices = {}
-    for attr, value in meta['attrs'].items():
-        indices[value[0]] = attr
-    
+    for attr, attr_value in meta['attrs'].items():
+        indices[attr_value[0]] = attr
+
     for line in f:
         case = {}
         # Index counter.
-        i = 0
-        split = line[:-1].split(" ")
-        for value in split:
+        line = line.strip().split(" ")
+
+        for i, attr_value in enumerate(line):
             # Find the attr name.
             attr = indices[i]
+
             # Check if this is the defining attribute, skip if so.
-            if attr != class_attr:
+            if attr.strip() != class_attr.strip():
                 # Check for continuous.
-                if meta['attrs'][attr][1]:
-                    # This is a dangerous cast!!  But we made sure it was a numeric 
+                if meta['attrs'][attr][1] in ['int', 'float', 'long', 'complex']:
+                    # This is a dangerous cast!!  But we made sure it was a numeric
                     #  type earlier!!
-                    value = eval(meta['attrs'][attr][1])(value)
-                    
-                    if attr in case:
-                        case[attr].append(value)
-                    else:
-                        case[attr] = [value]
-                    
-                    if value in meta['attrs'][attr][2]:
-                        meta['attrs'][attr][2][value] += 1
-                    else:
-                        meta['attrs'][attr][2][value] = 0
+                    attr_value = eval(meta['attrs'][attr][1])(attr_value)
+
+                # Set the attribute and the value
+                if attr in case:
+                    case[attr].append(attr_value)
                 else:
-                    # Set the attribute and the value.
-                    case[attr] = [value]
-                    
-                    meta['attrs'][attr][2][value] += 1
+                    case[attr] = [attr_value]
+
+                meta['attrs'][attr][2][attr_value] = meta['attrs'][attr][2].get(attr_value, 0) + 1 #@madhumita: start counter with 1 instead of 0 if this val occurs in data
             else:
-                c = value
-                meta['attrs'][attr][2][value] += 1
-            
-            i += 1
+                c = attr_value #class value
+                meta['attrs'][attr][2][attr_value] += 1
+
 
         # Create a new class if necessary.
         if not c in classes:
             classes[c] = []
-        
+
         # Append the case to our test set.
         classes[c].append(case)
-    
+
     # Return classes dictionary.
     return classes
 
@@ -636,11 +632,11 @@ def main():
     else:
         meta['opts']['p'] = True
     
-    # Create attrs.
+    print('Creating attributes')
     with open(meta['opts']['a']) as f:
         meta['attrs'] = create_attrs(f)
 
-    # Create classes.
+    print("Creating classes")
     with open(meta['opts']['t']) as f:
         classes = create_classes(f, meta['opts']['c'])
 
@@ -752,7 +748,7 @@ def prune_rule(pos, neg, rule, rules=None):
     max_rule = dict(tmp_rule)
     max_score = (p - n) / float(p + n)
     
-    keys = max_rule.keys()
+    keys = list(max_rule.keys())
     i = -1
     
     while len(tmp_rule.keys()) > 1:
